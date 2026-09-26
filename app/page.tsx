@@ -1,69 +1,132 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
+  const [customerId, setCustomerId] = useState("CUST001");
+  const [message, setMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<
+    { role: "user" | "agent"; text: string }[]
+  >([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function sendMessage() {
+    if (!message.trim()) return;
+
+    const userMsg = message;
+    setChatHistory((prev) => [...prev, { role: "user", text: userMsg }]);
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMsg, customerId }),
+      });
+      const data = await res.json();
+
+      setChatHistory((prev) => [...prev, { role: "agent", text: data.reply }]);
+      setLogs((prev) => [...prev, ...data.logs]);
+    } catch (err) {
+      setChatHistory((prev) => [
+        ...prev,
+        { role: "agent", text: "Something went wrong. Check the server logs." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div style={{ display: "flex", height: "100vh", fontFamily: "sans-serif" }}>
+      {/* Customer Chat Panel */}
+      <div style={{ flex: 1, padding: 20, borderRight: "1px solid #ccc", display: "flex", flexDirection: "column" }}>
+        <h2>Customer Support Chat</h2>
+
+        <label style={{ marginBottom: 8 }}>
+          Customer ID:{" "}
+          <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+            {Array.from({ length: 15 }, (_, i) => `CUST${String(i + 1).padStart(3, "0")}`).map(
+              (id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 12,
+            background: "#fafafa",
+          }}
+        >
+          {chatHistory.length === 0 && (
+            <p style={{ color: "#888" }}>
+              Try: "I want a refund for my order" or "Can I return my item?"
+            </p>
+          )}
+          {chatHistory.map((msg, i) => (
+            <div
+              key={i}
+              style={{
+                textAlign: msg.role === "user" ? "right" : "left",
+                margin: "8px 0",
+              }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  background: msg.role === "user" ? "#0070f3" : "#e5e5e5",
+                  color: msg.role === "user" ? "white" : "black",
+                  maxWidth: "80%",
+                }}
+              >
+                {msg.text}
+              </span>
+            </div>
+          ))}
+          {loading && <p style={{ color: "#888" }}>Agent is thinking...</p>}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #ccc" }}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            placeholder="Type your message..."
+          />
+          <button
+            onClick={sendMessage}
+            disabled={loading}
+            style={{ padding: "10px 20px", borderRadius: 8, background: "#0070f3", color: "white", border: "none" }}
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Send
+          </button>
         </div>
-      </main>
+      </div>
+
+      {/* Admin Reasoning Log Panel */}
+      <div style={{ flex: 1, padding: 20, background: "#111", color: "#0f0", overflowY: "auto", fontFamily: "monospace" }}>
+        <h2 style={{ color: "white" }}>Admin: Agent Reasoning Logs</h2>
+        {logs.length === 0 && <p style={{ color: "#888" }}>No activity yet.</p>}
+        {logs.map((log, i) => (
+          <pre key={i} style={{ whiteSpace: "pre-wrap", borderBottom: "1px solid #333", paddingBottom: 8, marginBottom: 8 }}>
+            {JSON.stringify(log, null, 2)}
+          </pre>
+        ))}
+      </div>
     </div>
   );
 }
