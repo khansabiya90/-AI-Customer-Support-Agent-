@@ -50,7 +50,7 @@ export default function Home() {
           <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
             {Array.from({ length: 15 }, (_, i) => `CUST${String(i + 1).padStart(3, "0")}`).map(
               (id) => (
-                <option key={id} value={id}>
+                <option key={id} value={id} >
                   {id}
                 </option>
               )
